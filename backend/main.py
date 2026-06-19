@@ -29,6 +29,11 @@ class CreateConversationRequest(BaseModel):
     pass
 
 
+class ConversationTitleUpdate(BaseModel):
+    """Request to update conversation title."""
+    title: str
+
+
 class SendMessageRequest(BaseModel):
     """Request to send a message in a conversation."""
     content: str
@@ -44,6 +49,12 @@ class ConversationMetadata(BaseModel):
     message_count: int
 
 
+class SettingsUpdate(BaseModel):
+    """Settings update payload."""
+    council_models: List[str]
+    chairman_model: str
+
+
 class Conversation(BaseModel):
     """Full conversation with all messages."""
     id: str
@@ -56,6 +67,22 @@ class Conversation(BaseModel):
 async def root():
     """Health check endpoint."""
     return {"status": "ok", "service": "LLM Council API"}
+
+
+@app.get("/api/settings")
+async def get_settings():
+    """Get global settings."""
+    return storage.get_settings()
+
+
+@app.post("/api/settings")
+async def save_settings(settings: SettingsUpdate):
+    """Save global settings."""
+    storage.save_settings({
+        "council_models": settings.council_models,
+        "chairman_model": settings.chairman_model
+    })
+    return {"status": "success"}
 
 
 @app.get("/api/conversations", response_model=List[ConversationMetadata])
@@ -81,6 +108,16 @@ async def get_conversation(conversation_id: str):
     return conversation
 
 
+@app.put("/api/conversations/{conversation_id}/title")
+async def update_conversation_title(conversation_id: str, request: ConversationTitleUpdate):
+    """Manually update the title of a conversation."""
+    try:
+        storage.update_conversation_title(conversation_id, request.title)
+        return {"status": "success", "title": request.title}
+    except ValueError:
+        raise HTTPException(status_code=404, detail="Conversation not found")
+
+
 @app.post("/api/conversations/{conversation_id}/message")
 async def send_message(conversation_id: str, request: SendMessageRequest):
     """
@@ -100,7 +137,7 @@ async def send_message(conversation_id: str, request: SendMessageRequest):
 
     # If this is the first message, generate a title
     if is_first_message:
-        title = await generate_conversation_title(request.content)
+        title = await generate_conversation_title(request.content, request.chairman_model)
         storage.update_conversation_title(conversation_id, title)
 
     # Run the 3-stage council process
@@ -149,7 +186,7 @@ async def send_message_stream(conversation_id: str, request: SendMessageRequest)
             # Start title generation in parallel (don't await yet)
             title_task = None
             if is_first_message:
-                title_task = asyncio.create_task(generate_conversation_title(request.content))
+                title_task = asyncio.create_task(generate_conversation_title(request.content, request.chairman_model))
 
             # Stage 1: Collect responses
             yield f"data: {json.dumps({'type': 'stage1_start'})}\n\n"

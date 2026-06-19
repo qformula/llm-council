@@ -14,23 +14,28 @@ function App() {
   
   // Model settings state
   const [isModelPanelOpen, setIsModelPanelOpen] = useState(false);
-  const [councilModels, setCouncilModels] = useState(() => {
-    const saved = localStorage.getItem('councilModels');
-    return saved ? JSON.parse(saved) : ["openai/gpt-4o", "anthropic/claude-3-5-sonnet", "google/gemini-pro-1.5"];
-  });
-  const [chairmanModel, setChairmanModel] = useState(() => {
-    const saved = localStorage.getItem('chairmanModel');
-    return saved || "openai/gpt-4o";
-  });
+  const [councilModels, setCouncilModels] = useState([]);
+  const [chairmanModel, setChairmanModel] = useState(null);
+  const [isSettingsLoaded, setIsSettingsLoaded] = useState(false);
 
-  // Save settings to localStorage
+  // Load settings from backend
   useEffect(() => {
-    localStorage.setItem('councilModels', JSON.stringify(councilModels));
-  }, [councilModels]);
+    api.getSettings()
+      .then(settings => {
+        setCouncilModels(settings.council_models || ["openai/gpt-4o"]);
+        setChairmanModel(settings.chairman_model || "openai/gpt-4o");
+        setIsSettingsLoaded(true);
+      })
+      .catch(err => console.error("Failed to load settings", err));
+  }, []);
 
+  // Save settings to backend
   useEffect(() => {
-    localStorage.setItem('chairmanModel', chairmanModel);
-  }, [chairmanModel]);
+    if (isSettingsLoaded) {
+      api.saveSettings(councilModels, chairmanModel)
+        .catch(err => console.error("Failed to save settings", err));
+    }
+  }, [councilModels, chairmanModel, isSettingsLoaded]);
 
   // Fetch OpenRouter models globally
   useEffect(() => {
@@ -39,22 +44,23 @@ function App() {
       .then(data => {
         const fetchedModels = data.data || [];
         setAllModels(fetchedModels);
-        
-        // Clean up invalid models from localStorage defaults
-        if (fetchedModels.length > 0) {
-          const validIds = new Set(fetchedModels.map(m => m.id));
-          
-          setCouncilModels(prev => {
-            const validCouncil = prev.filter(id => validIds.has(id));
-            // If all were invalid, fallback to something safe
-            return validCouncil.length > 0 ? validCouncil : ["openai/gpt-4o"];
-          });
-          
-          setChairmanModel(prev => validIds.has(prev) ? prev : "openai/gpt-4o");
-        }
       })
       .catch(err => console.error("Failed to fetch models", err));
   }, []);
+
+  // Clean up invalid models from backend settings once both are loaded
+  useEffect(() => {
+    if (allModels.length > 0 && isSettingsLoaded) {
+      const validIds = new Set(allModels.map(m => m.id));
+      
+      setCouncilModels(prev => {
+        const validCouncil = prev.filter(id => validIds.has(id));
+        return validCouncil.length > 0 ? validCouncil : ["openai/gpt-4o"];
+      });
+      
+      setChairmanModel(prev => validIds.has(prev) ? prev : "openai/gpt-4o");
+    }
+  }, [allModels, isSettingsLoaded]);
 
   // Load conversations on mount
   useEffect(() => {
@@ -101,6 +107,24 @@ function App() {
 
   const handleSelectConversation = (id) => {
     setCurrentConversationId(id);
+  };
+
+  const handleRenameConversation = async (id, newTitle) => {
+    try {
+      await api.updateConversationTitle(id, newTitle);
+      
+      // Update conversations list
+      setConversations(conversations.map(c => 
+        c.id === id ? { ...c, title: newTitle } : c
+      ));
+      
+      // Update current conversation if it's open
+      if (currentConversation && currentConversation.id === id) {
+        setCurrentConversation({ ...currentConversation, title: newTitle });
+      }
+    } catch (error) {
+      console.error('Failed to rename conversation:', error);
+    }
   };
 
   const handleSendMessage = async (content) => {
@@ -234,6 +258,7 @@ function App() {
         currentConversationId={currentConversationId}
         onSelectConversation={handleSelectConversation}
         onNewConversation={handleNewConversation}
+        onRenameConversation={handleRenameConversation}
         onToggleSettings={() => setIsModelPanelOpen(!isModelPanelOpen)}
         councilModels={councilModels}
         chairmanModel={chairmanModel}

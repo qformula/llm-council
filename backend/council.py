@@ -2,7 +2,6 @@
 
 from typing import List, Dict, Any, Tuple
 from .openrouter import query_models_parallel, query_model
-from .config import COUNCIL_MODELS, CHAIRMAN_MODEL
 
 
 async def stage1_collect_responses(user_query: str, council_models: List[str] = None) -> List[Dict[str, Any]]:
@@ -18,9 +17,11 @@ async def stage1_collect_responses(user_query: str, council_models: List[str] = 
     """
     messages = [{"role": "user", "content": user_query}]
 
+    if not council_models:
+        raise ValueError("Council models must be provided")
+
     # Query all models in parallel
-    models_to_use = council_models if council_models else COUNCIL_MODELS
-    responses = await query_models_parallel(models_to_use, messages)
+    responses = await query_models_parallel(council_models, messages)
 
     # Format results
     stage1_results = []
@@ -98,9 +99,11 @@ Now provide your evaluation and ranking:"""
 
     messages = [{"role": "user", "content": ranking_prompt}]
 
+    if not council_models:
+        raise ValueError("Council models must be provided")
+
     # Get rankings from all council models in parallel
-    models_to_use = council_models if council_models else COUNCIL_MODELS
-    responses = await query_models_parallel(models_to_use, messages)
+    responses = await query_models_parallel(council_models, messages)
 
     # Format results
     stage2_results = []
@@ -165,19 +168,24 @@ Provide a clear, well-reasoned final answer that represents the council's collec
 
     messages = [{"role": "user", "content": chairman_prompt}]
 
+    if not chairman_model:
+        return {
+            "model": "system",
+            "response": "Error: No Chairman model was provided by the frontend."
+        }
+
     # Query the chairman model
-    model_to_use = chairman_model if chairman_model else CHAIRMAN_MODEL
-    response = await query_model(model_to_use, messages)
+    response = await query_model(chairman_model, messages)
 
     if response is None:
         # Fallback if chairman fails
         return {
-            "model": model_to_use,
-            "response": "Error: Unable to generate final synthesis."
+            "model": chairman_model,
+            "response": "Error: Chairman model failed to respond (API Error, timeout, or rate limit)."
         }
 
     return {
-        "model": model_to_use,
+        "model": chairman_model,
         "response": response.get('content', '')
     }
 
@@ -263,12 +271,13 @@ def calculate_aggregate_rankings(
     return aggregate
 
 
-async def generate_conversation_title(user_query: str) -> str:
+async def generate_conversation_title(user_query: str, chairman_model: str) -> str:
     """
     Generate a short title for a conversation based on the first user message.
 
     Args:
         user_query: The first user message
+        chairman_model: The model to use for title generation
 
     Returns:
         A short title (3-5 words)
@@ -282,8 +291,8 @@ Title:"""
 
     messages = [{"role": "user", "content": title_prompt}]
 
-    # Use gemini-2.5-flash for title generation (fast and cheap)
-    response = await query_model("google/gemini-2.5-flash", messages, timeout=30.0)
+    # Use the chairman model for title generation
+    response = await query_model(chairman_model, messages, timeout=30.0)
 
     if response is None:
         # Fallback to a generic title

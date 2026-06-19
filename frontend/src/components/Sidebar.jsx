@@ -6,11 +6,15 @@ export default function Sidebar({
   currentConversationId,
   onSelectConversation,
   onNewConversation,
+  onRenameConversation,
   onToggleSettings,
   councilModels = [],
   chairmanModel,
   allModels = [],
 }) {
+  const [editingId, setEditingId] = useState(null);
+  const [editTitle, setEditTitle] = useState('');
+
   const getModelName = (id) => {
     if (!id) return 'None';
     const model = allModels.find(m => m.id === id);
@@ -36,10 +40,52 @@ export default function Sidebar({
               className={`conversation-item ${
                 conv.id === currentConversationId ? 'active' : ''
               }`}
-              onClick={() => onSelectConversation(conv.id)}
+              onClick={() => {
+                if (editingId !== conv.id) {
+                  onSelectConversation(conv.id);
+                }
+              }}
             >
-              <div className="conversation-title">
-                {conv.title || 'New Conversation'}
+              <div className="conversation-title-row">
+                {editingId === conv.id ? (
+                  <input
+                    type="text"
+                    className="rename-input"
+                    value={editTitle}
+                    autoFocus
+                    onClick={(e) => e.stopPropagation()}
+                    onChange={(e) => setEditTitle(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        onRenameConversation(conv.id, editTitle);
+                        setEditingId(null);
+                      } else if (e.key === 'Escape') {
+                        setEditingId(null);
+                      }
+                    }}
+                    onBlur={() => {
+                      onRenameConversation(conv.id, editTitle);
+                      setEditingId(null);
+                    }}
+                  />
+                ) : (
+                  <>
+                    <span className="conversation-title">
+                      {conv.title || 'New Conversation'}
+                    </span>
+                    <button 
+                      className="edit-title-btn"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setEditingId(conv.id);
+                        setEditTitle(conv.title || 'New Conversation');
+                      }}
+                      title="Rename conversation"
+                    >
+                      ✏️
+                    </button>
+                  </>
+                )}
               </div>
               <div className="conversation-meta">
                 {conv.message_count} messages

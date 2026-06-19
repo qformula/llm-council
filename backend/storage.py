@@ -89,7 +89,7 @@ def list_conversations() -> List[Dict[str, Any]]:
 
     conversations = []
     for filename in os.listdir(DATA_DIR):
-        if filename.endswith('.json'):
+        if filename.endswith('.json') and filename != 'settings.json':
             path = os.path.join(DATA_DIR, filename)
             with open(path, 'r') as f:
                 data = json.load(f)
@@ -170,3 +170,30 @@ def update_conversation_title(conversation_id: str, title: str):
 
     conversation["title"] = title
     save_conversation(conversation)
+
+
+def get_settings_path() -> str:
+    """Get the file path for global settings."""
+    return os.path.join(DATA_DIR, "settings.json")
+
+
+def get_settings() -> Dict[str, Any]:
+    """Load settings from storage."""
+    path = get_settings_path()
+    
+    if not os.path.exists(path):
+        return {
+            "council_models": ["openai/gpt-4o", "anthropic/claude-3.5-sonnet", "google/gemini-1.5-pro"],
+            "chairman_model": "openai/gpt-4o"
+        }
+        
+    with open(path, 'r') as f:
+        return json.load(f)
+
+
+def save_settings(settings: Dict[str, Any]):
+    """Save settings to storage."""
+    ensure_data_dir()
+    path = get_settings_path()
+    with open(path, 'w') as f:
+        json.dump(settings, f, indent=2)
