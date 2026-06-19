@@ -37,6 +37,7 @@
   cursor: pointer;
   border-radius: 6px;
   transition: all 0.2s;
+  white-space: nowrap;
 }
 
 .sidebar-tab.active {

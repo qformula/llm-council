@@ -27,7 +27,7 @@ export default function Sidebar({
   return (
     <div className="sidebar">
       <div className="sidebar-header">
-        <h1>SyntaxTale</h1>
+        <h1>LLM Council</h1>
         
         <div className="sidebar-tabs">
           <button 

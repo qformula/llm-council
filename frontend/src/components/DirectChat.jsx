@@ -45,7 +45,7 @@ export default function DirectChat({
     return (
       <div className="direct-chat-interface">
         <div className="empty-state">
-          <h2>Welcome to SyntaxTale</h2>
+          <h2>Welcome to LLM Council</h2>
           <p>Create a new conversation to start chatting 1-on-1</p>
         </div>
       </div>
