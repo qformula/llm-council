@@ -7,11 +7,11 @@ export default function ModelPanel({
   councilModels, 
   setCouncilModels, 
   chairmanModel, 
-  setChairmanModel 
+  setChairmanModel,
+  models
 }) {
-  const [models, setModels] = useState([]);
   const [search, setSearch] = useState('');
-  const [loading, setLoading] = useState(true);
+  const loading = models.length === 0;
   const [filters, setFilters] = useState({
     freeOnly: false,
     text: false,
@@ -19,20 +19,7 @@ export default function ModelPanel({
     file: false,
   });
 
-  useEffect(() => {
-    if (isOpen && models.length === 0) {
-      fetch('https://openrouter.ai/api/v1/models')
-        .then(res => res.json())
-        .then(data => {
-          setModels(data.data || []);
-          setLoading(false);
-        })
-        .catch(err => {
-          console.error("Failed to fetch models", err);
-          setLoading(false);
-        });
-    }
-  }, [isOpen, models.length]);
+
 
   const toggleCouncilModel = (modelId) => {
     if (councilModels.includes(modelId)) {

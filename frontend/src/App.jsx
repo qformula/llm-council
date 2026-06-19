@@ -10,6 +10,7 @@ function App() {
   const [currentConversationId, setCurrentConversationId] = useState(null);
   const [currentConversation, setCurrentConversation] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [allModels, setAllModels] = useState([]);
   
   // Model settings state
   const [isModelPanelOpen, setIsModelPanelOpen] = useState(false);
@@ -30,6 +31,14 @@ function App() {
   useEffect(() => {
     localStorage.setItem('chairmanModel', chairmanModel);
   }, [chairmanModel]);
+
+  // Fetch OpenRouter models globally
+  useEffect(() => {
+    fetch('https://openrouter.ai/api/v1/models')
+      .then(res => res.json())
+      .then(data => setAllModels(data.data || []))
+      .catch(err => console.error("Failed to fetch models", err));
+  }, []);
 
   // Load conversations on mount
   useEffect(() => {
@@ -210,6 +219,9 @@ function App() {
         onSelectConversation={handleSelectConversation}
         onNewConversation={handleNewConversation}
         onToggleSettings={() => setIsModelPanelOpen(!isModelPanelOpen)}
+        councilModels={councilModels}
+        chairmanModel={chairmanModel}
+        allModels={allModels}
       />
       <ChatInterface
         conversation={currentConversation}
@@ -223,6 +235,7 @@ function App() {
         setCouncilModels={setCouncilModels}
         chairmanModel={chairmanModel}
         setChairmanModel={setChairmanModel}
+        models={allModels}
       />
     </div>
   );

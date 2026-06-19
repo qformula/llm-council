@@ -7,7 +7,16 @@ export default function Sidebar({
   onSelectConversation,
   onNewConversation,
   onToggleSettings,
+  councilModels = [],
+  chairmanModel,
+  allModels = [],
 }) {
+  const getModelName = (id) => {
+    if (!id) return 'None';
+    const model = allModels.find(m => m.id === id);
+    return model ? model.name : id.split('/').pop();
+  };
+
   return (
     <div className="sidebar">
       <div className="sidebar-header">
@@ -41,6 +50,24 @@ export default function Sidebar({
       </div>
 
       <div className="sidebar-footer">
+        <div className="selected-models-section">
+          <h3>Active Council</h3>
+          
+          <div className="selected-model-group">
+            <div className="selected-model-role">Chairman</div>
+            <div className="selected-model-name chairman">👑 {getModelName(chairmanModel)}</div>
+          </div>
+          
+          <div className="selected-model-group">
+            <div className="selected-model-role">Members ({councilModels.length})</div>
+            <div className="selected-model-list">
+              {councilModels.map(id => (
+                <div key={id} className="selected-model-name member">• {getModelName(id)}</div>
+              ))}
+            </div>
+          </div>
+        </div>
+
         <button className="settings-btn" onClick={onToggleSettings}>
           ⚙️ Configure Models
         </button>
