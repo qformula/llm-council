@@ -6,6 +6,7 @@ export default function Sidebar({
   currentConversationId,
   onSelectConversation,
   onNewConversation,
+  onToggleSettings,
 }) {
   return (
     <div className="sidebar">
@@ -37,6 +38,12 @@ export default function Sidebar({
             </div>
           ))
         )}
+      </div>
+
+      <div className="sidebar-footer">
+        <button className="settings-btn" onClick={onToggleSettings}>
+          ⚙️ Configure Models
+        </button>
       </div>
     </div>
   );

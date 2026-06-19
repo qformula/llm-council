@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import Sidebar from './components/Sidebar';
 import ChatInterface from './components/ChatInterface';
+import ModelPanel from './components/ModelPanel';
 import { api } from './api';
 import './App.css';
 
@@ -9,6 +10,26 @@ function App() {
   const [currentConversationId, setCurrentConversationId] = useState(null);
   const [currentConversation, setCurrentConversation] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
+  
+  // Model settings state
+  const [isModelPanelOpen, setIsModelPanelOpen] = useState(false);
+  const [councilModels, setCouncilModels] = useState(() => {
+    const saved = localStorage.getItem('councilModels');
+    return saved ? JSON.parse(saved) : ["openai/gpt-4o", "anthropic/claude-3-5-sonnet", "google/gemini-pro-1.5"];
+  });
+  const [chairmanModel, setChairmanModel] = useState(() => {
+    const saved = localStorage.getItem('chairmanModel');
+    return saved || "openai/gpt-4o";
+  });
+
+  // Save settings to localStorage
+  useEffect(() => {
+    localStorage.setItem('councilModels', JSON.stringify(councilModels));
+  }, [councilModels]);
+
+  useEffect(() => {
+    localStorage.setItem('chairmanModel', chairmanModel);
+  }, [chairmanModel]);
 
   // Load conversations on mount
   useEffect(() => {
@@ -90,7 +111,7 @@ function App() {
       }));
 
       // Send message with streaming
-      await api.sendMessageStream(currentConversationId, content, (eventType, event) => {
+      await api.sendMessageStream(currentConversationId, content, councilModels, chairmanModel, (eventType, event) => {
         switch (eventType) {
           case 'stage1_start':
             setCurrentConversation((prev) => {
@@ -188,11 +209,20 @@ function App() {
         currentConversationId={currentConversationId}
         onSelectConversation={handleSelectConversation}
         onNewConversation={handleNewConversation}
+        onToggleSettings={() => setIsModelPanelOpen(!isModelPanelOpen)}
       />
       <ChatInterface
         conversation={currentConversation}
         onSendMessage={handleSendMessage}
         isLoading={isLoading}
+      />
+      <ModelPanel 
+        isOpen={isModelPanelOpen} 
+        onClose={() => setIsModelPanelOpen(false)}
+        councilModels={councilModels}
+        setCouncilModels={setCouncilModels}
+        chairmanModel={chairmanModel}
+        setChairmanModel={setChairmanModel}
       />
     </div>
   );
