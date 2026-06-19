@@ -36,7 +36,23 @@ function App() {
   useEffect(() => {
     fetch('https://openrouter.ai/api/v1/models')
       .then(res => res.json())
-      .then(data => setAllModels(data.data || []))
+      .then(data => {
+        const fetchedModels = data.data || [];
+        setAllModels(fetchedModels);
+        
+        // Clean up invalid models from localStorage defaults
+        if (fetchedModels.length > 0) {
+          const validIds = new Set(fetchedModels.map(m => m.id));
+          
+          setCouncilModels(prev => {
+            const validCouncil = prev.filter(id => validIds.has(id));
+            // If all were invalid, fallback to something safe
+            return validCouncil.length > 0 ? validCouncil : ["openai/gpt-4o"];
+          });
+          
+          setChairmanModel(prev => validIds.has(prev) ? prev : "openai/gpt-4o");
+        }
+      })
       .catch(err => console.error("Failed to fetch models", err));
   }, []);
 

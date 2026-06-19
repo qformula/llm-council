@@ -58,6 +58,7 @@
 
 .filter-checkboxes {
   display: flex;
+  flex-wrap: wrap;
   gap: 15px;
   margin-bottom: 10px;
 }

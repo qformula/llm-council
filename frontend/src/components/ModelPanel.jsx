@@ -17,6 +17,9 @@ export default function ModelPanel({
     text: false,
     image: false,
     file: false,
+    video: false,
+    audio: false,
+    selectedOnly: false,
   });
 
 
@@ -30,6 +33,10 @@ export default function ModelPanel({
   };
 
   const filteredModels = models.filter(m => {
+    if (filters.selectedOnly) {
+      if (!councilModels.includes(m.id) && chairmanModel !== m.id) return false;
+    }
+
     const matchesSearch = m.id.toLowerCase().includes(search.toLowerCase()) || 
                           m.name.toLowerCase().includes(search.toLowerCase());
     if (!matchesSearch) return false;
@@ -41,6 +48,8 @@ export default function ModelPanel({
     if (filters.text && !modalityStr.includes('text')) return false;
     if (filters.image && !modalityStr.includes('image')) return false;
     if (filters.file && !modalityStr.includes('file')) return false;
+    if (filters.video && !modalityStr.includes('video')) return false;
+    if (filters.audio && !modalityStr.includes('audio')) return false;
 
     return true;
   });
@@ -67,6 +76,11 @@ export default function ModelPanel({
               Free Only
             </label>
             <label className="filter-label">
+              <input type="checkbox" checked={filters.selectedOnly} onChange={e => setFilters({...filters, selectedOnly: e.target.checked})} />
+              Selected Only
+            </label>
+            <span style={{color: '#ddd'}}>|</span>
+            <label className="filter-label">
               <input type="checkbox" checked={filters.text} onChange={e => setFilters({...filters, text: e.target.checked})} />
               Text
             </label>
@@ -77,6 +91,14 @@ export default function ModelPanel({
             <label className="filter-label">
               <input type="checkbox" checked={filters.file} onChange={e => setFilters({...filters, file: e.target.checked})} />
               File
+            </label>
+            <label className="filter-label">
+              <input type="checkbox" checked={filters.video} onChange={e => setFilters({...filters, video: e.target.checked})} />
+              Video
+            </label>
+            <label className="filter-label">
+              <input type="checkbox" checked={filters.audio} onChange={e => setFilters({...filters, audio: e.target.checked})} />
+              Audio
             </label>
           </div>
           {!loading && (
