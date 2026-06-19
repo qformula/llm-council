@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
 import Sidebar from './components/Sidebar';
 import ChatInterface from './components/ChatInterface';
+import DirectChat from './components/DirectChat';
 import ModelPanel from './components/ModelPanel';
+import VariationsStudio from './components/VariationsStudio';
 import { api } from './api';
 import './App.css';
 
@@ -10,6 +12,7 @@ function App() {
   const [currentConversationId, setCurrentConversationId] = useState(null);
   const [currentConversation, setCurrentConversation] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState('council');
   const [allModels, setAllModels] = useState([]);
   
   // Model settings state
@@ -100,6 +103,7 @@ function App() {
         ...conversations,
       ]);
       setCurrentConversationId(newConv.id);
+      setActiveTab('chat');
     } catch (error) {
       console.error('Failed to create conversation:', error);
     }
@@ -107,6 +111,9 @@ function App() {
 
   const handleSelectConversation = (id) => {
     setCurrentConversationId(id);
+    if (activeTab === 'variations') {
+      setActiveTab('council');
+    }
   };
 
   const handleRenameConversation = async (id, newTitle) => {
@@ -127,7 +134,7 @@ function App() {
     }
   };
 
-  const handleSendMessage = async (content) => {
+  const handleSendMessage = async (content, mode = 'council') => {
     if (!currentConversationId) return;
 
     setIsLoading(true);
@@ -160,7 +167,7 @@ function App() {
       }));
 
       // Send message with streaming
-      await api.sendMessageStream(currentConversationId, content, councilModels, chairmanModel, (eventType, event) => {
+      await api.sendMessageStream(currentConversationId, content, councilModels, chairmanModel, mode, (eventType, event) => {
         switch (eventType) {
           case 'stage1_start':
             setCurrentConversation((prev) => {
@@ -210,6 +217,18 @@ function App() {
             });
             break;
 
+          case 'stage3_chunk':
+            setCurrentConversation((prev) => {
+              const messages = [...prev.messages];
+              const lastMsg = messages[messages.length - 1];
+              if (!lastMsg.stage3) {
+                lastMsg.stage3 = { response: '' };
+              }
+              lastMsg.stage3.response += event.chunk;
+              return { ...prev, messages };
+            });
+            break;
+
           case 'stage3_complete':
             setCurrentConversation((prev) => {
               const messages = [...prev.messages];
@@ -227,12 +246,25 @@ function App() {
 
           case 'complete':
             // Stream complete, reload conversations list
+            setCurrentConversation((prev) => {
+              const messages = [...prev.messages];
+              const lastMsg = messages[messages.length - 1];
+              lastMsg.loading = { stage1: false, stage2: false, stage3: false };
+              return { ...prev, messages };
+            });
             loadConversations();
             setIsLoading(false);
             break;
 
           case 'error':
             console.error('Stream error:', event.message);
+            setCurrentConversation((prev) => {
+              const messages = [...prev.messages];
+              const lastMsg = messages[messages.length - 1];
+              lastMsg.error = event.message;
+              lastMsg.loading = { stage1: false, stage2: false, stage3: false };
+              return { ...prev, messages };
+            });
             setIsLoading(false);
             break;
 
@@ -263,12 +295,33 @@ function App() {
         councilModels={councilModels}
         chairmanModel={chairmanModel}
         allModels={allModels}
-      />
-      <ChatInterface
-        conversation={currentConversation}
-        onSendMessage={handleSendMessage}
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
         isLoading={isLoading}
       />
+      {activeTab === 'council' && (
+        <ChatInterface
+          conversation={currentConversation}
+          onSendMessage={handleSendMessage}
+          isLoading={isLoading}
+        />
+      )}
+      {activeTab === 'direct' && (
+        <DirectChat
+          conversation={currentConversation}
+          onSendMessage={handleSendMessage}
+          isLoading={isLoading}
+          chairmanModel={chairmanModel}
+          allModels={allModels}
+        />
+      )}
+      {activeTab === 'variations' && (
+        <VariationsStudio 
+          councilModels={councilModels}
+          chairmanModel={chairmanModel}
+          allModels={allModels}
+        />
+      )}
       <ModelPanel 
         isOpen={isModelPanelOpen} 
         onClose={() => setIsModelPanelOpen(false)}

@@ -24,7 +24,7 @@ export default function ChatInterface({
   const handleSubmit = (e) => {
     e.preventDefault();
     if (input.trim() && !isLoading) {
-      onSendMessage(input);
+      onSendMessage(input, 'council');
       setInput('');
     }
   };
@@ -41,7 +41,7 @@ export default function ChatInterface({
     return (
       <div className="chat-interface">
         <div className="empty-state">
-          <h2>Welcome to LLM Council</h2>
+          <h2>Welcome to SyntaxTale</h2>
           <p>Create a new conversation to get started</p>
         </div>
       </div>
@@ -120,11 +120,11 @@ export default function ChatInterface({
         <div ref={messagesEndRef} />
       </div>
 
-      {conversation.messages.length === 0 && (
+      <div className="input-area-container">
         <form className="input-form" onSubmit={handleSubmit}>
           <textarea
             className="message-input"
-            placeholder="Ask your question... (Shift+Enter for new line, Enter to send)"
+            placeholder="Ask the council to debate... (Shift+Enter for new line)"
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
@@ -139,7 +139,7 @@ export default function ChatInterface({
             Send
           </button>
         </form>
-      )}
+      </div>
     </div>
   );
 }

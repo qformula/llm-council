@@ -1,0 +1,160 @@
+.direct-chat-interface {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background-color: #f9fbfd;
+}
+
+.direct-chat-header {
+  padding: 16px 24px;
+  background: white;
+  border-bottom: 1px solid #e0e4e8;
+  display: flex;
+  align-items: center;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+}
+
+.chairman-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #fdf2e9;
+  padding: 8px 16px;
+  border-radius: 20px;
+}
+
+.chairman-label {
+  font-size: 13px;
+  color: #666;
+}
+
+.chairman-name {
+  font-weight: 600;
+  color: #e67e22;
+  font-size: 14px;
+}
+
+.direct-messages-container {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.direct-message-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.direct-user-message {
+  align-self: flex-end;
+  max-width: 80%;
+}
+
+.direct-assistant-message {
+  align-self: flex-start;
+  max-width: 80%;
+}
+
+.direct-message-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #64748b;
+  margin-bottom: 6px;
+  margin-left: 4px;
+}
+
+.direct-user-message .direct-message-label {
+  text-align: right;
+  margin-right: 4px;
+}
+
+.direct-message-content {
+  padding: 16px 20px;
+  border-radius: 12px;
+  font-size: 15px;
+  line-height: 1.6;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+}
+
+.direct-user-message .direct-message-content {
+  background-color: #4a90e2;
+  color: white;
+  border-bottom-right-radius: 4px;
+}
+
+.assistant-content {
+  background-color: white;
+  color: #333;
+  border: 1px solid #e0e4e8;
+  border-bottom-left-radius: 4px;
+}
+
+.direct-input-area {
+  padding: 24px;
+  background: white;
+  border-top: 1px solid #e0e4e8;
+}
+
+.direct-input-form {
+  display: flex;
+  gap: 12px;
+  align-items: flex-end;
+}
+
+.direct-message-input {
+  flex: 1;
+  padding: 14px;
+  border: 1px solid #e0e4e8;
+  border-radius: 8px;
+  font-size: 15px;
+  font-family: inherit;
+  resize: none;
+  background-color: #f8fafc;
+  transition: all 0.2s;
+}
+
+.direct-message-input:focus {
+  outline: none;
+  border-color: #4a90e2;
+  background-color: white;
+  box-shadow: 0 0 0 2px rgba(74, 144, 226, 0.1);
+}
+
+.direct-send-button {
+  background-color: #4a90e2;
+  color: white;
+  border: none;
+  padding: 14px 24px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 15px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.direct-send-button:hover:not(:disabled) {
+  background-color: #357abd;
+}
+
+.direct-send-button:disabled {
+  background-color: #a0c4ec;
+  cursor: not-allowed;
+}
+
+/* Inherit markdown styles but ensure they work in our colors */
+.direct-user-message .markdown-content {
+  color: white;
+}
+
+.direct-user-message .markdown-content code {
+  background: rgba(255,255,255,0.2);
+  color: white;
+}
+
+.direct-user-message .markdown-content pre {
+  background: rgba(0,0,0,0.2);
+}

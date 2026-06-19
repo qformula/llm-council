@@ -100,7 +100,7 @@ export const api = {
   /**
    * Send a message in a conversation.
    */
-  async sendMessage(conversationId, content, councilModels = null, chairmanModel = null) {
+  async sendMessage(conversationId, content, councilModels = null, chairmanModel = null, mode = 'council') {
     const response = await fetch(
       `${API_BASE}/api/conversations/${conversationId}/message`,
       {
@@ -111,7 +111,8 @@ export const api = {
         body: JSON.stringify({ 
           content,
           council_models: councilModels,
-          chairman_model: chairmanModel
+          chairman_model: chairmanModel,
+          mode
         }),
       }
     );
@@ -128,7 +129,7 @@ export const api = {
    * @param {function} onEvent - Callback function for each event: (eventType, data) => void
    * @returns {Promise<void>}
    */
-  async sendMessageStream(conversationId, content, councilModels, chairmanModel, onEvent) {
+  async sendMessageStream(conversationId, content, councilModels, chairmanModel, mode, onEvent) {
     const response = await fetch(
       `${API_BASE}/api/conversations/${conversationId}/message/stream`,
       {
@@ -139,7 +140,8 @@ export const api = {
         body: JSON.stringify({ 
           content,
           council_models: councilModels,
-          chairman_model: chairmanModel
+          chairman_model: chairmanModel,
+          mode
         }),
       }
     );
@@ -150,13 +152,15 @@ export const api = {
 
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
+    let buffer = '';
 
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
 
-      const chunk = decoder.decode(value);
-      const lines = chunk.split('\n');
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop(); // Keep the last incomplete line in the buffer
 
       for (const line of lines) {
         if (line.startsWith('data: ')) {
@@ -170,5 +174,25 @@ export const api = {
         }
       }
     }
+  },
+
+  /**
+   * Get variations from multiple models in parallel.
+   */
+  async getVariations(content, models) {
+    const response = await fetch(`${API_BASE}/api/variations`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        content,
+        models
+      }),
+    });
+    if (!response.ok) {
+      throw new Error('Failed to fetch variations');
+    }
+    return response.json();
   },
 };

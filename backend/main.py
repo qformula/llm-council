@@ -11,6 +11,7 @@ import asyncio
 
 from . import storage
 from .council import run_full_council, generate_conversation_title, stage1_collect_responses, stage2_collect_rankings, stage3_synthesize_final, calculate_aggregate_rankings
+from .openrouter import query_model, query_models_parallel, query_model_stream
 
 app = FastAPI(title="LLM Council API")
 
@@ -39,6 +40,12 @@ class SendMessageRequest(BaseModel):
     content: str
     council_models: List[str] = None
     chairman_model: str = None
+    mode: str = "council"  # "council" or "direct"
+
+class VariationsRequest(BaseModel):
+    """Request to generate parallel variations."""
+    content: str
+    models: List[str]
 
 
 class ConversationMetadata(BaseModel):
@@ -118,6 +125,31 @@ async def update_conversation_title(conversation_id: str, request: ConversationT
         raise HTTPException(status_code=404, detail="Conversation not found")
 
 
+@app.post("/api/variations")
+async def generate_variations(request: VariationsRequest):
+    """Generate variations from multiple models in parallel."""
+    if not request.models:
+        raise HTTPException(status_code=400, detail="No models provided")
+        
+    messages = [{"role": "user", "content": request.content}]
+    responses_dict = await query_models_parallel(request.models, messages)
+    
+    variations = []
+    for model, resp in responses_dict.items():
+        if resp:
+            variations.append({
+                "model": model,
+                "content": resp.get("content", "")
+            })
+        else:
+            variations.append({
+                "model": model,
+                "content": "Error: Failed to generate variation."
+            })
+            
+    return {"variations": variations}
+
+
 @app.post("/api/conversations/{conversation_id}/message")
 async def send_message(conversation_id: str, request: SendMessageRequest):
     """
@@ -188,21 +220,59 @@ async def send_message_stream(conversation_id: str, request: SendMessageRequest)
             if is_first_message:
                 title_task = asyncio.create_task(generate_conversation_title(request.content, request.chairman_model))
 
-            # Stage 1: Collect responses
-            yield f"data: {json.dumps({'type': 'stage1_start'})}\n\n"
-            stage1_results = await stage1_collect_responses(request.content, request.council_models)
-            yield f"data: {json.dumps({'type': 'stage1_complete', 'data': stage1_results})}\n\n"
+            if request.mode == "direct":
+                print(f"[API] Handling Direct Mode query for conversation {conversation_id}")
+                # Direct mode: bypass debate, just query the chairman
+                yield f"data: {json.dumps({'type': 'stage3_start'})}\n\n"
+                
+                messages = []
+                for msg in conversation["messages"]:
+                    if msg["role"] == "user":
+                        messages.append({"role": "user", "content": msg["content"]})
+                    elif msg["role"] == "assistant":
+                        # In direct mode, we just care about the final response
+                        if "stage3" in msg and msg["stage3"]:
+                            messages.append({"role": "assistant", "content": msg["stage3"]["response"]})
+                        else:
+                            # Fallback if somehow there's no stage3
+                            messages.append({"role": "assistant", "content": "Previous response."})
+                
+                # We don't need to append request.content again because storage.add_user_message
+                # already appended it to conversation["messages"] above!
+                
+                full_response = ""
+                async for chunk in query_model_stream(request.chairman_model, messages):
+                    full_response += chunk
+                    yield f"data: {json.dumps({'type': 'stage3_chunk', 'chunk': chunk})}\n\n"
+                
+                stage1_results = []
+                stage2_results = []
+                stage3_result = {
+                    "model": request.chairman_model,
+                    "response": full_response if full_response else "Error: Direct query failed."
+                }
+                
+                yield f"data: {json.dumps({'type': 'stage3_complete', 'data': stage3_result})}\n\n"
+                print(f"[API] Direct Mode query complete")
+                
+            else:
+                print(f"[API] Handling Council Mode query for conversation {conversation_id}")
+                # Council mode: 3-stage debate
+                # Stage 1: Collect responses
+                yield f"data: {json.dumps({'type': 'stage1_start'})}\n\n"
+                stage1_results = await stage1_collect_responses(request.content, request.council_models)
+                yield f"data: {json.dumps({'type': 'stage1_complete', 'data': stage1_results})}\n\n"
 
-            # Stage 2: Collect rankings
-            yield f"data: {json.dumps({'type': 'stage2_start'})}\n\n"
-            stage2_results, label_to_model = await stage2_collect_rankings(request.content, stage1_results, request.council_models)
-            aggregate_rankings = calculate_aggregate_rankings(stage2_results, label_to_model)
-            yield f"data: {json.dumps({'type': 'stage2_complete', 'data': stage2_results, 'metadata': {'label_to_model': label_to_model, 'aggregate_rankings': aggregate_rankings}})}\n\n"
+                # Stage 2: Collect rankings
+                yield f"data: {json.dumps({'type': 'stage2_start'})}\n\n"
+                stage2_results, label_to_model = await stage2_collect_rankings(request.content, stage1_results, request.council_models)
+                aggregate_rankings = calculate_aggregate_rankings(stage2_results, label_to_model)
+                yield f"data: {json.dumps({'type': 'stage2_complete', 'data': stage2_results, 'metadata': {'label_to_model': label_to_model, 'aggregate_rankings': aggregate_rankings}})}\n\n"
 
-            # Stage 3: Synthesize final answer
-            yield f"data: {json.dumps({'type': 'stage3_start'})}\n\n"
-            stage3_result = await stage3_synthesize_final(request.content, stage1_results, stage2_results, request.chairman_model)
-            yield f"data: {json.dumps({'type': 'stage3_complete', 'data': stage3_result})}\n\n"
+                # Stage 3: Synthesize final answer
+                yield f"data: {json.dumps({'type': 'stage3_start'})}\n\n"
+                stage3_result = await stage3_synthesize_final(request.content, stage1_results, stage2_results, request.chairman_model)
+                yield f"data: {json.dumps({'type': 'stage3_complete', 'data': stage3_result})}\n\n"
 
             # Wait for title generation if it was started
             if title_task:

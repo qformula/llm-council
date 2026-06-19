@@ -11,6 +11,9 @@ export default function Sidebar({
   councilModels = [],
   chairmanModel,
   allModels = [],
+  activeTab,
+  setActiveTab,
+  isLoading,
 }) {
   const [editingId, setEditingId] = useState(null);
   const [editTitle, setEditTitle] = useState('');
@@ -24,7 +27,29 @@ export default function Sidebar({
   return (
     <div className="sidebar">
       <div className="sidebar-header">
-        <h1>LLM Council</h1>
+        <h1>SyntaxTale</h1>
+        
+        <div className="sidebar-tabs">
+          <button 
+            className={`sidebar-tab ${activeTab === 'council' ? 'active' : ''}`}
+            onClick={() => setActiveTab('council')}
+          >
+            ⚖️ Council
+          </button>
+          <button 
+            className={`sidebar-tab ${activeTab === 'direct' ? 'active' : ''}`}
+            onClick={() => setActiveTab('direct')}
+          >
+            💬 1:1 Chat
+          </button>
+          <button 
+            className={`sidebar-tab ${activeTab === 'variations' ? 'active' : ''}`}
+            onClick={() => setActiveTab('variations')}
+          >
+            ✨ Variations
+          </button>
+        </div>
+
         <button className="new-conversation-btn" onClick={onNewConversation}>
           + New Conversation
         </button>
@@ -117,6 +142,11 @@ export default function Sidebar({
         <button className="settings-btn" onClick={onToggleSettings}>
           ⚙️ Configure Models
         </button>
+        
+        <div className="app-status">
+          <div className={`status-indicator ${isLoading ? 'processing' : 'ready'}`}></div>
+          <span className="status-text">{isLoading ? 'Backend Processing...' : 'Backend Ready'}</span>
+        </div>
       </div>
     </div>
   );
